@@ -20,11 +20,25 @@ bool asst::RoguelikeConfig::verify_and_load_params(const json::value& params)
 
     m_theme = theme;
     m_mode = mode;
-    m_difficulty = 0;
+    if (m_theme != RoguelikeTheme::Phantom) {
+        m_difficulty = params.get("difficulty", 0);
+    }
+    else if (params.contains("difficulty")) {
+        Log.error(__FUNCTION__, "| Invalid difficulty for theme", m_theme);
+        return false;
+    }
 
-    // 凹指定干员开局直升
+    m_start_with_seed = params.get("start_with_seed", false);
     m_start_with_elite_two = params.get("start_with_elite_two", false);
     m_only_start_with_elite_two = params.get("only_start_with_elite_two", false);
+    if (mode != RoguelikeMode::Collectible && (m_start_with_elite_two || m_only_start_with_elite_two)) {
+        Log.error(__FUNCTION__, "| Invalid mode for start_with_elite_two", static_cast<int>(mode));
+        return false;
+    }
+    if (!m_start_with_elite_two && m_only_start_with_elite_two) {
+        Log.error(__FUNCTION__, "| only_start_with_elite_two can only be used together with start_with_elite_two");
+        return false;
+    }
 
     // 设置层数选点策略，相关逻辑在 RoguelikeStrategyChangeTaskPlugin
     {
@@ -36,6 +50,28 @@ bool asst::RoguelikeConfig::verify_and_load_params(const json::value& params)
             Log.warn(__FUNCTION__, "No strategy for mode", static_cast<int>(mode));
         }
         Task.set_task_base(strategy_task, strategy_task_with_mode);
+
+        // 点刺成锭分队特殊策略
+        if (m_theme == "Sarkaz") {
+            auto squad = params.get("squad", "");
+            if (m_mode == RoguelikeMode::Investment &&
+                (squad == "点刺成锭分队" || (squad == "后勤分队" && m_start_with_seed))) {
+                if (squad == "点刺成锭分队") {
+                    // 启用特殊策略，联动 RoguelikeRoutingTaskPlugin
+                    Task.set_task_base(strategy_task, "Sarkaz@Roguelike@StrategyChange-FastInvestment");
+                }
+                // 禁用前 2 层的 <思维负荷干员编队> 功能
+                Task.set_task_base(
+                    "Sarkaz@Roguelike@StageBurdenOperation",
+                    "Sarkaz@Roguelike@StageBurdenOperation-None");
+            }
+            else {
+                // 启用前 2 层的 <思维负荷干员编队> 功能
+                Task.set_task_base(
+                    "Sarkaz@Roguelike@StageBurdenOperation",
+                    "Sarkaz@Roguelike@StageBurdenOperation-Start");
+            }
+        }
     }
 
     // 重置开局奖励 next，获得任意奖励均继续；烧水相关逻辑在 RoguelikeLastRewardTaskPlugin
@@ -44,7 +80,6 @@ bool asst::RoguelikeConfig::verify_and_load_params(const json::value& params)
     Task.set_task_base("Roguelike@LastReward3", "Roguelike@LastReward_default");
     Task.set_task_base("Roguelike@LastReward4", "Roguelike@LastReward_default");
     Task.set_task_base("Roguelike@LastRewardRand", "Roguelike@LastReward_default");
-    
 
     if (m_mode == RoguelikeMode::Investment) {
         bool investment_with_more_score = params.get("investment_with_more_score", false);
@@ -59,14 +94,23 @@ bool asst::RoguelikeConfig::verify_and_load_params(const json::value& params)
         m_invest_with_more_score = (investment_with_more_score);
     }
 
-    // =========================== 萨米主题专用参数 ===========================
+    if (m_mode == RoguelikeMode::Collectible && !m_only_start_with_elite_two) {
+        m_run_for_collectible = true; // 烧开水模式下，如果不是只凹直升，第一轮游戏先烧水
+    }
 
+    // ------------------ 萨米主题专用参数 ------------------
     if (m_theme == RoguelikeTheme::Sami) {
         // 是否凹开局远见密文板
         m_first_floor_foldartal = params.contains("first_floor_foldartal");
+    }
 
-        // 是否检查坍缩范式，非CLP_PDS模式下默认为False, CLP_PDS模式下默认为True
-        m_check_clp_pds = params.get("check_collapsal_paradigms", mode == RoguelikeMode::CLP_PDS);
+    // ------------------ 萨卡兹主题专用参数 ------------------
+    if (m_theme == RoguelikeTheme::Sarkaz) {
+        m_start_with_two_ideas = params.get("start_with_two_ideas", false);
+        if (m_mode != RoguelikeMode::Collectible && m_start_with_two_ideas) {
+            Log.error(__FUNCTION__, "| Invalid mode for start_with_two_ideas", static_cast<int>(mode));
+            return false;
+        }
     }
 
     return true;
