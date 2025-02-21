@@ -1,4 +1,4 @@
-﻿// <copyright file="AnnouncementInfo.cs" company="MaaAssistantArknights">
+// <copyright file="AnnouncementInfo.cs" company="MaaAssistantArknights">
 // MaaWpfGui - A part of the MaaCoreArknights project
 // Copyright (C) 2021 MistEO and Contributors
 //
@@ -19,9 +19,15 @@ namespace MaaWpfGui.Configuration
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
-        public string Info { get; set; } = string.Empty;
+        /// <summary>
+        /// Gets or sets a value indicating whether 下次不再显示公告
+        /// </summary>
+        public bool DoNotShowAgain { get; set; } = false;
 
-        public bool IsFirstShow { get; set; } = true;
+        /// <summary>
+        /// Gets or sets a value indicating whether 不显示公告
+        /// </summary>
+        public bool DoNotShow { get; set; } = false;
 
         public void OnPropertyChanged(string propertyName, object before, object after)
         {

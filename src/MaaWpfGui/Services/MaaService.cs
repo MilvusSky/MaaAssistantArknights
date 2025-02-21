@@ -61,6 +61,9 @@ namespace MaaWpfGui.Services
         public static extern bool AsstStop(AsstHandle handle);
 
         [DllImport("MaaCore.dll")]
+        public static extern unsafe Int32 AsstAsyncScreencap(AsstHandle handle, bool block);
+
+        [DllImport("MaaCore.dll")]
         public static extern unsafe ulong AsstGetImage(AsstHandle handle, byte* buff, ulong buffSize);
 
         [DllImport("MaaCore.dll")]
@@ -74,5 +77,88 @@ namespace MaaWpfGui.Services
 
         [DllImport("MaaCore.dll")]
         public static extern unsafe void AsstSetConnectionExtras(byte* name, byte* extras);
+    }
+
+    public enum AsstTaskType : byte
+    {
+        /// <summary>
+        /// 开始唤醒。
+        /// </summary>
+        StartUp = 0,
+
+        /// <summary>
+        /// 关闭明日方舟
+        /// </summary>
+        CloseDown,
+
+        /// <summary>
+        /// 刷理智
+        /// </summary>
+        Fight,
+
+        /// <summary>
+        /// 领取奖励
+        /// </summary>
+        Award,
+
+        /// <summary>
+        /// 信用商店
+        /// </summary>
+        Mall,
+
+        /// <summary>
+        /// 基建
+        /// </summary>
+        Infrast,
+
+        /// <summary>
+        /// 招募
+        /// </summary>
+        Recruit,
+
+        /// <summary>
+        /// 肉鸽
+        /// </summary>
+        Roguelike,
+
+        /// <summary>
+        /// 自动战斗
+        /// </summary>
+        Copilot,
+
+        /// <summary>
+        /// 自动战斗-保全ver
+        /// </summary>
+        SSSCopilot,
+
+        /// <summary>
+        /// 单步任务（目前仅支持战斗）
+        /// </summary>
+        SingleStep,
+
+        /// <summary>
+        /// 视频识别
+        /// </summary>
+        VideoRecognition,
+
+        /// <summary>
+        /// 仓库识别
+        /// </summary>
+        Depot,
+
+        /// <summary>
+        /// 干员识别
+        /// </summary>
+        OperBox,
+
+        /// <summary>
+        /// 生息演算
+        /// </summary>
+        Reclamation,
+
+        /// <summary>
+        /// 自定义任务
+        /// </summary>
+        Custom,
     }
 }

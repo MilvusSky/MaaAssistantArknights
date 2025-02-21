@@ -143,8 +143,7 @@ public:
     std::string push(id& i)
     {
         i = 0;
-        if (auto iter =
-                std::find_if(m_state.rbegin(), m_state.rend(), [](int e) { return e != -1; });
+        if (auto iter = std::find_if(m_state.rbegin(), m_state.rend(), [](int e) { return e != -1; });
             iter != m_state.rend()) {
             i = *iter + 1;
         }
@@ -258,13 +257,13 @@ public:
     console_ostream& operator=(console_ostream&&) = default;
     console_ostream& operator=(const console_ostream&) = default;
 
-    console_ostream(std::ostream& stream)
-        : m_ofs(stream)
+    console_ostream(std::ostream& stream) :
+        m_ofs(stream)
     {
     }
 
-    console_ostream(std::reference_wrapper<std::ostream> stream)
-        : m_ofs(stream)
+    console_ostream(std::reference_wrapper<std::ostream> stream) :
+        m_ofs(stream)
     {
     }
 
@@ -272,6 +271,7 @@ public:
     requires has_stream_insertion_operator<std::ostream, T>
     console_ostream& operator<<(T&& v)
     {
+#ifdef _WIN32
         if constexpr (std::convertible_to<T, std::string_view>) {
             asst::utils::utf8_scope scope(m_ofs.get());
             m_ofs.get() << std::forward<T>(v);
@@ -279,6 +279,9 @@ public:
         else {
             m_ofs.get() << std::forward<T>(v);
         }
+#else
+        m_ofs.get() << std::forward<T>(v);
+#endif
         return *this;
     }
 
@@ -300,8 +303,8 @@ public:
     ostreams& operator=(ostreams&&) = default;
     ostreams& operator=(const ostreams&) = default;
 
-    ostreams(Args&&... args)
-        : m_ofss(std::forward<Args>(args)...)
+    ostreams(Args&&... args) :
+        m_ofss(std::forward<Args>(args)...)
     {
     }
 
@@ -326,8 +329,7 @@ public:
     }
 
     template <typename Tuple, size_t... Is>
-    static void
-        streams_put(Tuple& t, std::ostream& (*pf)(std::ostream&), std::index_sequence<Is...>)
+    static void streams_put(Tuple& t, std::ostream& (*pf)(std::ostream&), std::index_sequence<Is...>)
     {
         ((convert_reference_wrapper(std::get<Is>(t)) << pf), ...);
     }
@@ -345,8 +347,8 @@ public:
         constexpr separator(const separator&) = default;
         constexpr separator(separator&&) noexcept = default;
 
-        constexpr explicit separator(std::string_view s) noexcept
-            : str(s)
+        constexpr explicit separator(std::string_view s) noexcept :
+            str(s)
         {
         }
 
@@ -373,8 +375,8 @@ public:
         constexpr level(const level&) = default;
         constexpr level(level&&) noexcept = default;
 
-        constexpr explicit level(std::string_view s) noexcept
-            : str(s)
+        constexpr explicit level(std::string_view s) noexcept :
+            str(s)
         {
         }
 
@@ -423,29 +425,25 @@ public:
         }
 
         template <typename _stream_t = stream_t>
-        LogStream(std::mutex& mtx, _stream_t&& ofs, Logger::level lv)
-            : m_trace_lock(mtx)
-            , m_ofs(ofs)
+        LogStream(std::mutex& mtx, _stream_t&& ofs, Logger::level lv) :
+            m_trace_lock(mtx),
+            m_ofs(ofs)
         {
             *this << lv;
         }
 
         template <typename _stream_t = stream_t, typename... Args>
-        LogStream(std::mutex& mtx, _stream_t&& ofs, Logger::level lv, Args&&... buff)
-            : m_trace_lock(mtx)
-            , m_ofs(ofs)
+        LogStream(std::mutex& mtx, _stream_t&& ofs, Logger::level lv, Args&&... buff) :
+            m_trace_lock(mtx),
+            m_ofs(ofs)
         {
             ((*this << lv) << ... << std::forward<Args>(buff));
         }
 
         template <typename _stream_t = stream_t, typename... Args>
-        LogStream(
-            std::unique_lock<std::mutex>&& lock,
-            _stream_t&& ofs,
-            Logger::level lv,
-            Args&&... buff)
-            : m_trace_lock(std::move(lock))
-            , m_ofs(ofs)
+        LogStream(std::unique_lock<std::mutex>&& lock, _stream_t&& ofs, Logger::level lv, Args&&... buff) :
+            m_trace_lock(std::move(lock)),
+            m_ofs(ofs)
         {
             ((*this << lv) << ... << std::forward<Args>(buff));
         }
@@ -586,11 +584,7 @@ public:
         }
         else {
 #ifdef ASST_DEBUG
-            return LogStream(
-                m_trace_mutex,
-                ostreams { console_ostream(std::cout), m_ofs },
-                level::trace,
-                arg);
+            return LogStream(m_trace_mutex, ostreams { console_ostream(std::cout), m_ofs }, level::trace, arg);
 #else
             return LogStream(m_trace_mutex, m_ofs, level::trace, arg);
 #endif
@@ -623,9 +617,14 @@ public:
     inline void debug([[maybe_unused]] Args&&... args)
     {
 #ifdef ASST_DEBUG
-        std::unique_lock lock { m_trace_mutex };
-        log(std::move(lock), level::debug, std::forward<Args>(args)...);
+        constexpr bool need_log = true;
+#else
+        static const bool need_log = std::filesystem::exists("DEBUG.txt");
 #endif
+        if (need_log) {
+            std::unique_lock lock { m_trace_mutex };
+            log(std::move(lock), level::debug, m_scopes.next(), std::forward<Args>(args)...);
+        }
     }
 
 #undef LOGGER_FUNC_WITH_LEVEL
@@ -688,8 +687,8 @@ public:
 private:
     friend class SingletonHolder<Logger>;
 
-    Logger()
-        : m_directory(UserDir.get())
+    Logger() :
+        m_directory(UserDir.get())
     {
         std::filesystem::create_directories(m_log_path.parent_path());
         rotate();
@@ -698,10 +697,9 @@ private:
 
     void rotate() const
     {
-        constexpr uintmax_t MaxLogSize = 4ULL * 1024 * 1024;
+        constexpr uintmax_t MaxLogSize = 64ULL * 1024 * 1024;
         try {
-            if (std::filesystem::exists(m_log_path)
-                && std::filesystem::is_regular_file(m_log_path)) {
+            if (std::filesystem::exists(m_log_path) && std::filesystem::is_regular_file(m_log_path)) {
                 const uintmax_t log_size = std::filesystem::file_size(m_log_path);
                 if (log_size >= MaxLogSize) {
                     std::filesystem::rename(m_log_path, m_log_bak_path);
@@ -750,9 +748,9 @@ inline Logger::level Logger::level::error("ERR");
 class LoggerAux
 {
 public:
-    explicit LoggerAux(std::string_view func_name)
-        : m_func_name(func_name)
-        , m_start_time(std::chrono::steady_clock::now())
+    explicit LoggerAux(std::string_view func_name) :
+        m_func_name(func_name),
+        m_start_time(std::chrono::steady_clock::now())
     {
 #ifdef ASST_DEBUG
         m_id = Logger::get_instance().push
@@ -802,8 +800,7 @@ private:
 #define LogTraceScope LoggerAux _CatVarNameWithLine(_func_aux_)
 
 #ifndef _MSC_VER
-inline constexpr std::string_view
-    summarize_pretty_function(std::string_view pf) // can be consteval?
+inline constexpr std::string_view summarize_pretty_function(std::string_view pf) // can be consteval?
 {
     // unable to handle something like std::function<void(void)> gen_func()
     const auto paren = pf.find_first_of('(');

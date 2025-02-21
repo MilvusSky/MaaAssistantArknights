@@ -101,7 +101,9 @@ Usage of `resource/copilot/*.json` and field description.
                                     // Set it to 1 in that case.
 
             "pre_delay": 0,         // Pre-delay in ms, optional, 0 by default
+                                    // Once all condition parameters of the current action are met, a timer starts, and upon its completion, the action corresponding to the type is executed.
             "post_delay": 0,        // Post-delay in ms, optional, 0 by default
+                                    // The current action's type starts a timer upon completion of the action, and once the timer ends, the next action begins.
 
             // "timeout": 999999999,   // Reserved field, not implemented
                                     // Timeout time in ms, optional when `type` is "Deploy" | "Skill", INT_MAX by default
@@ -136,6 +138,11 @@ Usage of `resource/copilot/*.json` and field description.
         "details": "对练度要求很低balabala……",      // You can write your name here, video link, walkthrough link, etc.
         "details_color": "dark"
     },
+    "difficulty": 0 // The difficulty of the task, optional, the default value is 0.
+    // 0: Default, not set
+    // 1: Support normal difficulty
+    // 2: Support raid difficulty
+    // 3: Support normal and raid difficulty
 }
 ```
 

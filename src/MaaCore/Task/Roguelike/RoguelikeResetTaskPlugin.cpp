@@ -1,6 +1,5 @@
 #include "RoguelikeResetTaskPlugin.h"
 
-#include "Status.h"
 #include "Utils/Logger.hpp"
 
 bool asst::RoguelikeResetTaskPlugin::verify(AsstMsg msg, const json::value& details) const
@@ -35,5 +34,6 @@ bool asst::RoguelikeResetTaskPlugin::_run()
         }
     }
     m_config->clear();
+    Log.flush();
     return true;
 }
